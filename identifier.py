@@ -2,6 +2,8 @@ import numpy as np
 import pickle
 import os
 from sklearn.neighbors import KNeighborsClassifier
+from sklearn.preprocessing import MinMaxScaler
+from DFTTransformer import DFTTransformer
 
 class SpeakerIdentifier:
     def __init__(self, sample_rate=16000, chunk_length=1, both_channels=False, feature_num=200, aggregator=sum, signal_threshold=100, n_neighbors=3, certainty=0.5, data_dir="audio_samples/saved"):
@@ -34,14 +36,9 @@ class SpeakerIdentifier:
         if self.both_channels:
             self.right_model = KNeighborsClassifier(n_neighbors = n_neighbors)
 
-    def extract_features(self, audio_sample):
-        """
-        Extracts the features out of an 2-channel audio sample
-        """
-        features_left = np.zeros((0, self.feature_num))
-        features_right = np.zeros((0, self.feature_num))
-
-        bucket_size = int(self.N / self.feature_num)
+    def chunk_sample(self, audio_sample):
+        left_channel = np.zeros((0, self.N))
+        right_channel = np.zeros((0, self.N))
 
         for i in range(0, len(audio_sample), self.N):
             sample = audio_sample[i: i + self.N]
@@ -52,24 +49,34 @@ class SpeakerIdentifier:
 
             left = sample[:, 0]
             #Don't include the section of the audio if it is too quiet
-            if np.mean(np.abs(left)) < self.signal_threshold: 
-                continue
-            
-            #Perform the DFT
-            dft_left = np.abs(np.fft.fft(left) / self.N)
-            #Extract the feature vector using the aggregator function
-            left_feature_vec = np.array([self.aggregator(dft_left[x:x+bucket_size]) for x in range(0, len(dft_left), bucket_size)])
-            #Apply Min-Max Scaling to account for different volumes of clips
-            left_feature_vec = min_max_scaling(left_feature_vec)
-
-            features_left = np.vstack((features_left, left_feature_vec))
+            if np.mean(np.abs(left)) > self.signal_threshold: 
+                left_channel = np.vstack((left_channel, left))
 
             if self.both_channels:
                 right = sample[:, 1]
-                dft_right = np.abs(np.fft.fft(right) / self.N)
-                right_feature_vec = np.array([self.aggregator(dft_right[x:x+bucket_size]) for x in range(0, len(dft_right), bucket_size)])
-                right_feature_vec = min_max_scaling(left_feature_vec)
-                features_right = np.vstack((features_right, right_feature_vec))
+                if np.mean(np.abs(right)) > self.signal_threshold: 
+                    right_channel = np.vstack((right_channel, right))
+
+        return left_channel, right_channel
+                
+
+    def extract_features(self, audio_sample):
+        """
+        Extracts the features out of an 2-channel audio sample
+        """
+        left_channel, right_channel = self.chunk_sample(audio_sample)
+        dft_transformer = DFTTransformer(sample_rate=self.sample_rate, feature_num=self.feature_num, aggregator=self.aggregator)
+
+        features_left = dft_transformer.fit_transform(left_channel)
+        features_right = np.zeros((0, self.feature_num))
+
+        if self.both_channels:
+            features_right = dft_transformer.fit_transform(right_channel)
+
+        #scaler = MinMaxScaler()
+
+        #features_left = scaler.fit_transform(features_left)
+        #features_right = scaler.fit_transform(features_right)
 
         return (features_left, features_right)
 
@@ -180,9 +187,3 @@ class SpeakerIdentifier:
         """
         path = os.path.join(self.data_dir, speaker_name + ".pkl")
         return np.load(path)
-
-def min_max_scaling(data_vec):
-    """
-    Perform's min-max scaling on the data
-    """
-    return (data_vec - np.min(data_vec)) / (np.max(data_vec - np.min(data_vec)))

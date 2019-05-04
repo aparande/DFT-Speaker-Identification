@@ -28,19 +28,6 @@ def remove_outliers(data, threshold = 100):
 
     return cleaned
 
-def extract_features(data, feature_num=40, aggregator = sum):
-    assert N % feature_num == 0, "Feature Number must divide vector length evenly"
-    
-    features = np.zeros((0, feature_num))
-    bucket_size = int(N / feature_num)
-
-    for i in range(len(data)):
-        data_vec = np.abs(data[i, :])
-        feature_vec = np.array([aggregator(data_vec[x:x+bucket_size]) for x in range(0, len(data_vec), bucket_size)])
-        features = np.vstack((features, feature_vec))
-
-    return features
-
 def find_centroids(data_vecs, labels):
     num_centroids = len(np.unique(labels))
     centroids = {}
