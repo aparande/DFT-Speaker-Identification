@@ -147,16 +147,3 @@ class SpeakerIdentifier:
     def load_data(self, speaker_name):
         path = os.path.join(self.data_dir, speaker_name + ".pkl")
         return np.load(path)
-
-from scipy.io import wavfile
-if __name__ == "__main__":
-    system  = SpeakerIdentifier()
-
-    DIR = "audio_samples/Original/"
-    for name in ["anmol", "kishan", "emily", "daniel"]:
-        rate, audio = wavfile.read(os.path.join(DIR, name+"_training.wav"))
-        system.add_speaker(name, audio)
-
-    for name in ["anmol", "kishan", "emily", "daniel"]:
-        rate, audio = wavfile.read(os.path.join(DIR, name+"_test.wav"))
-        system.classify(audio)

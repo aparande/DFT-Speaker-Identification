@@ -1,4 +1,6 @@
 __pycache__/*
 *.ipynb*
 audio_samples/*
+preprocess.py
+utils.py
 
