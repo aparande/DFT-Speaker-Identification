@@ -129,42 +129,30 @@ class SpeakerIdentifier:
         Classifies a two-channel audio sample using the model
         """
         features_left, features_right = self.extract_features(audio_sample)
-        classification_counts = [0 for x in range(len(self.speakers) + 1)]
+        classification_counts = [0 for x in range(len(self.speakers))]
 
         for i in range(len(features_left)):
             feature = np.reshape(features_left[i, :], (1, -1))
 
-            left_proba = self.left_model.predict_proba(feature)[0]
-            left_pred = np.argmax(left_proba)
-
-            if left_proba[left_pred] >= self.certainty:
-                classification_counts[left_pred] += 1
-            else:
-                classification_counts[-1] += 1
+            left_pred = int(self.left_model.predict(feature)[0])
+            classification_counts[left_pred] += 1
 
             if self.both_channels:
-                right_proba = self.right_model.predict_proba(feature)[0]
-                right_pred = np.argmax(right_proba)
+                right_pred = int(self.right_model.predict(feature)[0])
+                classification_counts[right_pred] += 1
 
-                if right_proba[right_pred] >= self.certainty:
-                    classification_counts[right_pred] += 1
-                else:
-                    classification_counts[-1] += 1
+        probabilities = np.array(classification_counts) / sum(classification_counts)
+        pred = np.argmax(probabilities)
 
-        classification = np.argmax(classification_counts)
         if should_print:
-            sample_num = sum(classification_counts)
-            print("Probabilities -- ", sep="")
-            for i in range(len(classification_counts) - 1):
-                print("%s: %f" % (self.speakers[i], classification_counts[i] / sample_num), sep=", ")
-            print("Unknown: %f" % (classification_counts[-1] / sample_num))
+            print(probabilities)
 
-        if classification == len(self.speakers):
+        if probabilities[pred] > self.certainty:
+            print("Identified %s" % self.speakers[pred])
+            return self.speakers[pred]
+        else:
             print("Unidentified Speaker")
             return -1
-        else:
-            print("Identified %s" % self.speakers[classification])
-            return classification
             
     def save_data(self, speaker_name, data):
         """
