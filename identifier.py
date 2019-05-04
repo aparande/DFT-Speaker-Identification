@@ -5,9 +5,20 @@ from sklearn.neighbors import KNeighborsClassifier
 
 class SpeakerIdentifier:
     def __init__(self, sample_rate=16000, chunk_length=1, both_channels=False, feature_num=200, aggregator=sum, signal_threshold=100, n_neighbors=3, certainty=0.5, data_dir="audio_samples/saved"):
+        """
+        sample_rate: How many samples/second do the audio clips use
+        chunk_length: How many seconds of audio will you use to classify
+        both_channels: Uses only the left audio channel if false
+        feature_num: The number of features to use
+        aggregator: How will the features be computed (sum, average, max, etc)
+        signal_threshold: How loud must a signal be to not be considered silence
+        n_neighbors: How many neighbors will be used to classify
+        certainty: How certain must the classifier be to count its prediction
+        data_dir: Where will the training data be saved?
+        """
         self.sample_rate = sample_rate
         self.chunk_length = chunk_length
-        self.N = sample_rate * chunk_length
+        self.N = int(sample_rate * chunk_length)
         self.f0 = 1 / self.N
     
         assert self.N % feature_num == 0, "Feature Number must divide vector length evenly"
@@ -24,6 +35,9 @@ class SpeakerIdentifier:
             self.right_model = KNeighborsClassifier(n_neighbors = n_neighbors)
 
     def extract_features(self, audio_sample):
+        """
+        Extracts the features out of an 2-channel audio sample
+        """
         features_left = np.zeros((0, self.feature_num))
         features_right = np.zeros((0, self.feature_num))
 
@@ -45,17 +59,24 @@ class SpeakerIdentifier:
             dft_left = np.abs(np.fft.fft(left) / self.N)
             #Extract the feature vector using the aggregator function
             left_feature_vec = np.array([self.aggregator(dft_left[x:x+bucket_size]) for x in range(0, len(dft_left), bucket_size)])
+            #Apply Min-Max Scaling to account for different volumes of clips
+            left_feature_vec = min_max_scaling(left_feature_vec)
+
             features_left = np.vstack((features_left, left_feature_vec))
 
             if self.both_channels:
                 right = sample[:, 1]
                 dft_right = np.abs(np.fft.fft(right) / self.N)
                 right_feature_vec = np.array([self.aggregator(dft_right[x:x+bucket_size]) for x in range(0, len(dft_right), bucket_size)])
+                right_feature_vec = min_max_scaling(left_feature_vec)
                 features_right = np.vstack((features_right, right_feature_vec))
 
         return (features_left, features_right)
 
     def add_speaker(self, name, audio_sample):
+        """
+        Add a new speaker to be recognized by the classifier
+        """
         if name in self.speakers:
             print("Error: %s is already a speaker" % name)
             return
@@ -72,6 +93,9 @@ class SpeakerIdentifier:
         self.train_model()
 
     def train_model(self):
+        """
+        Trains the KNN model on the given data
+        """
         labels = np.zeros((0, 1))
         left_data = np.zeros((0, self.feature_num))
         right_data = np.zeros((0, self.feature_num))
@@ -99,6 +123,9 @@ class SpeakerIdentifier:
             self.right_model.fit(right_data, labels)
 
     def classify(self, audio_sample, should_print=True):
+        """
+        Classifies a two-channel audio sample using the model
+        """
         features_left, features_right = self.extract_features(audio_sample)
         classification_counts = [0 for x in range(len(self.speakers) + 1)]
 
@@ -138,6 +165,9 @@ class SpeakerIdentifier:
             return classification
             
     def save_data(self, speaker_name, data):
+        """
+        Saves the training sample files
+        """
         if not os.path.exists(self.data_dir):
             os.makedirs(self.data_dir)
         
@@ -145,5 +175,14 @@ class SpeakerIdentifier:
         np.array(data).dump(path)
 
     def load_data(self, speaker_name):
+        """
+        Loads the training sample file for a speaker
+        """
         path = os.path.join(self.data_dir, speaker_name + ".pkl")
         return np.load(path)
+
+def min_max_scaling(data_vec):
+    """
+    Perform's min-max scaling on the data
+    """
+    return (data_vec - np.min(data_vec)) / (np.max(data_vec - np.min(data_vec)))
