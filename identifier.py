@@ -31,7 +31,10 @@ class SpeakerIdentifier:
         self.aggregator = aggregator
         self.signal_threshold = signal_threshold
         self.data_dir = data_dir
-        self.left_model = KNeighborsClassifier(n_neighbors = n_neighbors, weights="distance")
+
+        cosine_simil = lambda x, y: 1 - np.dot(y.T, x) / (np.linalg.norm(x) * np.linalg.norm(y))
+
+        self.left_model = KNeighborsClassifier(n_neighbors = n_neighbors, weights="distance", metric=cosine_simil)
         self.certainty = certainty
         if self.both_channels:
             self.right_model = KNeighborsClassifier(n_neighbors = n_neighbors, weights="distance")
