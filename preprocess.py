@@ -17,6 +17,12 @@ def break_data_in_file(filename):
         sample_data = audio_data[i: i+N]
         wavfile.write(TRAINING_DIR+filename+"/"+str(i // N)+".wav", rate, sample_data)
 
+def write_overlapping_chunks(filename):
+	rate, audio_data = wavfile.read(SAMPLE_DIR + filename+".wav")
+	for i in range(0, len(audio_data) - N // 2, N // 2):
+		sample_data = audio_data[i: i+N]
+		wavfile.write(TRAINING_DIR+filename+"_50overlap/"+str(i)+".wav", rate, sample_data)
+
 def load_samples_for_name(name):
 	DIR = TRAINING_DIR + name
 	files = [f for f in listdir(DIR) if isfile(join(DIR, f))]

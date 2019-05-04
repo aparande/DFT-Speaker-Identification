@@ -31,16 +31,16 @@ class SpeakerIdentifier:
         self.aggregator = aggregator
         self.signal_threshold = signal_threshold
         self.data_dir = data_dir
-        self.left_model = KNeighborsClassifier(n_neighbors = n_neighbors)
+        self.left_model = KNeighborsClassifier(n_neighbors = n_neighbors, weights="distance")
         self.certainty = certainty
         if self.both_channels:
-            self.right_model = KNeighborsClassifier(n_neighbors = n_neighbors)
+            self.right_model = KNeighborsClassifier(n_neighbors = n_neighbors, weights="distance")
 
     def chunk_sample(self, audio_sample):
         left_channel = np.zeros((0, self.N))
         right_channel = np.zeros((0, self.N))
 
-        for i in range(0, len(audio_sample), self.N):
+        for i in range(0, len(audio_sample) - self.N // 2, self.N // 2):
             sample = audio_sample[i: i + self.N]
 
             #Make sure the length of the sample is consistent
@@ -72,11 +72,6 @@ class SpeakerIdentifier:
 
         if self.both_channels:
             features_right = dft_transformer.fit_transform(right_channel)
-
-        #scaler = MinMaxScaler()
-
-        #features_left = scaler.fit_transform(features_left)
-        #features_right = scaler.fit_transform(features_right)
 
         return (features_left, features_right)
 
