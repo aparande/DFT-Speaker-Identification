@@ -9,7 +9,6 @@ Since each person's voice is comprised of a unique set of frequencies, it is pos
 2. Perform the DFT on both audio channels for each segment
 3. Compute the magnitude of each entry of the frequency domain vector to get the relative strength of each frequency
 4. Derive a feature vector out of the frequency domain vector by "bucketing" frequencies together and taking an aggregate value over each bucket (sum, average, max, etc)
-5. Apply min-max scaling to the feature vector to normalize for different volume between clips.
 
 ## Training
 1. Process the data
@@ -17,4 +16,5 @@ Since each person's voice is comprised of a unique set of frequencies, it is pos
 
 ## Classification
 1. Process the data
-2. Use the KNN classifier to determine how likely it is that the sample belongs to each speaker. If the model's confidence is less than a particular threshold, return unidentified
+2. Use the KNN classifier (with cosine similarity as a metric) to determine how likely it is that the sample belongs to each speaker. 
+3. If the model's confidence is less than a particular threshold, return unidentified
