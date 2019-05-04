@@ -1,4 +1,5 @@
 __pycache__/*
 *.ipynb*
 audio_samples/*
+*.pkl
 

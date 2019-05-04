@@ -2,6 +2,7 @@ import numpy as np
 import pickle
 import os
 from sklearn.neighbors import KNeighborsClassifier
+from sklearn.neighbors import DistanceMetric
 from sklearn.preprocessing import MinMaxScaler
 from DFTTransformer import DFTTransformer
 
@@ -19,9 +20,7 @@ class SpeakerIdentifier:
         data_dir: Where will the training data be saved?
         """
         self.sample_rate = sample_rate
-        self.chunk_length = chunk_length
         self.N = int(sample_rate * chunk_length)
-        self.f0 = 1 / self.N
     
         assert self.N % feature_num == 0, "Feature Number must divide vector length evenly"
 
@@ -31,13 +30,14 @@ class SpeakerIdentifier:
         self.aggregator = aggregator
         self.signal_threshold = signal_threshold
         self.data_dir = data_dir
+        self.certainty = certainty
+        self.n_neighbors = n_neighbors
 
         cosine_simil = lambda x, y: 1 - np.dot(y.T, x) / (np.linalg.norm(x) * np.linalg.norm(y))
 
         self.left_model = KNeighborsClassifier(n_neighbors = n_neighbors, weights="distance", metric=cosine_simil)
-        self.certainty = certainty
         if self.both_channels:
-            self.right_model = KNeighborsClassifier(n_neighbors = n_neighbors, weights="distance")
+            self.right_model = KNeighborsClassifier(n_neighbors = n_neighbors, weights="distance", metric=cosine_simil)
 
     def chunk_sample(self, audio_sample):
         left_channel = np.zeros((0, self.N))
@@ -173,3 +173,29 @@ class SpeakerIdentifier:
         """
         path = os.path.join(self.data_dir, speaker_name + ".pkl")
         return np.load(path)
+
+    def save(self, name):
+        temp_left = self.left_model
+        temp_right = self.right_model
+
+        self.left_model = None
+        self.right_model = None
+        with open(name+".pkl", "wb") as f:
+            pickle.dump(self, f)
+
+        self.left_model = temp_left
+        self.right_model = temp_right
+
+    @staticmethod
+    def load(name):
+        with open(name+".pkl", "rb") as f:
+            clf =  pickle.load(f)
+
+        cosine_simil = lambda x, y: 1 - np.dot(y.T, x) / (np.linalg.norm(x) * np.linalg.norm(y))
+
+        clf.left_model = KNeighborsClassifier(n_neighbors = clf.n_neighbors, weights="distance", metric=cosine_simil)
+        if clf.both_channels:
+            clf.right_model = KNeighborsClassifier(n_neighbors = clf.n_neighbors, weights="distance", metric=cosine_simil)
+
+        clf.train_model()
+        return clf
