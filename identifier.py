@@ -97,6 +97,32 @@ class SpeakerIdentifier:
 
         self.train_model()
 
+    def add_sample(self, name, audio_sample):
+        """
+        Adds a new sample to a person
+        """
+        if name not in self.speakers:
+            self.add_speaker(name, audio_sample)
+            return
+
+        features_left, features_right = self.extract_features(audio_sample)
+        saved_data = self.load_data(name)
+
+        if len(saved_data.shape) == 3:
+            saved_left = saved_data[0]
+            saved_right = saved_data[1]
+        else:
+            saved_left = saved_data
+
+        left_channel = np.vstack((saved_left, features_left))
+        if self.both_channels:
+            right_channel = np.vstack((saved_right, features_right))
+            self.save_data(name, (left_channel, right_channel))
+        else:
+            self.save_data(name, (left_channel))
+
+        self.train_model()
+
     def train_model(self):
         """
         Trains the KNN model on the given data
