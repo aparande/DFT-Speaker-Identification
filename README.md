@@ -12,9 +12,15 @@ Since each person's voice is comprised of a unique set of frequencies, it is pos
 
 ## Training
 1. Process the data
-2. Train a K-Nearest Neighbors (KNN) classifier on the feature vectors
+2. Train a K-Nearest Neighbors (KNN) classifier on the feature vectors which uses Cosine Similarity as its distance metric.
 
 ## Classification
 1. Process the data
-2. Use the KNN classifier (with cosine similarity as a metric) to determine how likely it is that the sample belongs to each speaker. 
+2. Use the KNN classifier to determine how likely it is that the sample belongs to each speaker. 
 3. If the model's confidence is less than a particular threshold, return unidentified
+
+# Results
+The classifier does very well at identifying which audio clip a small 1-second clip comes from. However, different recordings of the same individual appear to have very different frequency components. This makes it difficult for the system to identify who is speaking when given a recording that it was not trained on. In other words, without more preprocessing of the signal, this basic model grossly overfits.
+
+To fix the problem of overfitting, it is likely that the audio recordings need to be preprocessed more to properly extract the true voiceprint of the speaker.
+
